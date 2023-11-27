@@ -1,3 +1,4 @@
+# Юсупов Д.Р. ИУ8-52
 #
 # В данном модуле в виде функций реализованы некоторые растровые алгоритмы:
 #
@@ -10,13 +11,16 @@
 #
 #   * sobel_filter                  - фильтр Собеля для выделения контуров изображения
 #
+#   * line_fill                     - алгоритм рекурсивной заливки отрезками с затравкой
+#   * bitmask_fill (not ready)      - алгоритм нерекурсивной заливки по битовой маске
+#
 
 from PIL import Image
 import array
 from math import sqrt
 from statistics import mean
 
-def bresenham_line(line : tuple[tuple[int, int], tuple[int, int]], image : Image):
+def bresenham_line(line : tuple[tuple[int, int], tuple[int, int]], image : Image, color = 255):
 # функция рисует на растровой плоскости отрезок по 2м точкам по целочисленному алгоритму Брезенхейма
 #
 # параметры:
@@ -36,14 +40,14 @@ def bresenham_line(line : tuple[tuple[int, int], tuple[int, int]], image : Image
     
     # данная прямая не помещается полностью на нашу плоскость
     if ((x_1 < 0) | (x_2 > image.size[0]) | (min(y_1, y_2) < 0) | (max(y_1, y_2) > image.size[1])):
-        pass
+        return
 
 
     dx = (x_2 - x_1); dy = (y_2 - y_1)
 
     if (dy >= 0):
         if(dx >= dy):
-            image.putpixel((x_1, y_1), 255)
+            image.putpixel((x_1, y_1), color)
 
             x = x_1; y = y_1; var = 0
             while (x < x_2):
@@ -53,10 +57,10 @@ def bresenham_line(line : tuple[tuple[int, int], tuple[int, int]], image : Image
                     var -= dx
                 x += 1
 
-                image.putpixel((x, y), 255)
+                image.putpixel((x, y), color)
 
         else:
-            image.putpixel((x_1, y_1), 255)
+            image.putpixel((x_1, y_1), color)
 
             x = x_1; y = y_1; var = 0
             while (y < y_2):
@@ -66,10 +70,10 @@ def bresenham_line(line : tuple[tuple[int, int], tuple[int, int]], image : Image
                     var -= dy
                 y += 1
 
-                image.putpixel((x, y), 255)
+                image.putpixel((x, y), color)
     else:
         if(dx >= -dy):
-            image.putpixel((x_1, y_1), 255)
+            image.putpixel((x_1, y_1), color)
 
             x = x_1; y = y_1; var = 0
             while (x < x_2):
@@ -79,10 +83,10 @@ def bresenham_line(line : tuple[tuple[int, int], tuple[int, int]], image : Image
                     var -= dx
                 x += 1
 
-                image.putpixel((x, y), 255)
+                image.putpixel((x, y), color)
 
         else:
-            image.putpixel((x_1, y_1), 255)
+            image.putpixel((x_1, y_1), color)
 
             x = x_1; y = y_1; var = 0
             while (y > y_2):
@@ -92,9 +96,8 @@ def bresenham_line(line : tuple[tuple[int, int], tuple[int, int]], image : Image
                     var -= -dy
                 y -= 1
                 
-                image.putpixel((x, y), 255)
-    pass
-def bresenham_circle(xy : tuple[int, int], R : int, image : Image):
+                image.putpixel((x, y), color)
+def bresenham_circle(xy : tuple[int, int], R : int, image : Image, color = 255):
 # функция рисует на растровой плоскости окружность по целочисленному алгоритму Брезенхейма
 #
 # параметры:
@@ -108,13 +111,13 @@ def bresenham_circle(xy : tuple[int, int], R : int, image : Image):
 
     # данная окружность не помещается полностью на нашу плоскость
     if (x_0 - R < 0 | x_0 + R > image.size[0] | y_0 - R < 0 | y_0 + R > image.size[1]):
-        pass
+        return
 
     dx = 0; dy = R; f = 1 - R
-    image.putpixel((x_0 + dx, y_0 + dy), 255) # 0
-    image.putpixel((y_0 + dy, x_0 + dx), 255) # 3
-    image.putpixel((x_0 - dx, y_0 - dy), 255) # 6
-    image.putpixel((y_0 - dy, x_0 - dx), 255) # 9
+    image.putpixel((x_0 + dx, y_0 + dy), color) # 0
+    image.putpixel((y_0 + dy, x_0 + dx), color) # 3
+    image.putpixel((x_0 - dx, y_0 - dy), color) # 6
+    image.putpixel((y_0 - dy, x_0 - dx), color) # 9
 
 
     # данный алгоритм чертит 0 - 1.5 круга от его верхушки (dx, dy) = (0, R)
@@ -127,16 +130,14 @@ def bresenham_circle(xy : tuple[int, int], R : int, image : Image):
             f += 2 * dx + 3
         dx += 1
 
-        image.putpixel((x_0 + dx, y_0 + dy), 255) # 0 - 1.5
-        image.putpixel((x_0 + dy, y_0 + dx), 255) # 1.5 - 3
-        image.putpixel((x_0 + dy, y_0 - dx), 255) # 3 - 4.5
-        image.putpixel((x_0 + dx, y_0 - dy), 255) # 4.5 - 6
-        image.putpixel((x_0 - dx, y_0 - dy), 255) # 6 - 7.5
-        image.putpixel((x_0 - dy, y_0 - dx), 255) # 7.5 - 9
-        image.putpixel((x_0 - dy, y_0 + dx), 255) # 9 - 10.5
-        image.putpixel((x_0 - dx, y_0 + dy), 255) # 10.5 - 12
-    
-    pass
+        image.putpixel((x_0 + dx, y_0 + dy), color) # 0 - 1.5
+        image.putpixel((x_0 + dy, y_0 + dx), color) # 1.5 - 3
+        image.putpixel((x_0 + dy, y_0 - dx), color) # 3 - 4.5
+        image.putpixel((x_0 + dx, y_0 - dy), color) # 4.5 - 6
+        image.putpixel((x_0 - dx, y_0 - dy), color) # 6 - 7.5
+        image.putpixel((x_0 - dy, y_0 - dx), color) # 7.5 - 9
+        image.putpixel((x_0 - dy, y_0 + dx), color) # 9 - 10.5
+        image.putpixel((x_0 - dx, y_0 + dy), color) # 10.5 - 12
 def rectangle(x_min, x_max, y_min, y_max, image : Image):
 # функция рисует на растровой плоскости прямоугольник
 #
@@ -151,8 +152,6 @@ def rectangle(x_min, x_max, y_min, y_max, image : Image):
     bresenham_line(((x_max, y_min), (x_max, y_max)), image) # RIGHT
     bresenham_line(((x_min, y_min), (x_max, y_min)), image) # BOTTOM
     bresenham_line(((x_min, y_max), (x_max, y_max)), image) # TOP
-
-    pass
 def polygon(xy, image : Image):
 # функция рисует на растровой плоскости произовольный многоугольник
 #
@@ -162,7 +161,6 @@ def polygon(xy, image : Image):
 #
     for i in range(len(xy)):
         bresenham_line(((xy[i - 1][0], xy[i - 1][1]), (xy[i][0], xy[i][1])), image)
-    pass
 def cohen_sutherland_clipper(line : tuple[tuple[int, int], tuple[int, int]], x_min, x_max, y_min, y_max, image : Image):
 # функция отсекает некоторый отрезок прямоугольником на растровой плоскость по алгоритму Коэна - Сазерленда
 #
@@ -174,16 +172,6 @@ def cohen_sutherland_clipper(line : tuple[tuple[int, int], tuple[int, int]], x_m
 #   y_max - верхняя грань прямоугольника   
 #   image - растровая плоскость
 #
-    # задаю константы
-    LEFT = 1; RIGHT = 2; BOTTOM = 4; TOP = 8
-
-    # задание переменных
-    x_1 = line[0][0]
-    y_1 = line[0][1]
-    x_2 = line[1][0]
-    y_2 = line[1][1]
-
-    
     def code(xy : tuple[int, int], x_min, x_max, y_min, y_max):
     # вспомогательная функция, вычисляющая код точки по алгоритму Коэна - Сазерленда, относительно прямоугольника
         x = xy[0]
@@ -198,8 +186,17 @@ def cohen_sutherland_clipper(line : tuple[tuple[int, int], tuple[int, int]], x_m
         code += TOP if y > y_max else 0
 
         return code
+    
+    # задаю константы
+    LEFT = 1; RIGHT = 2; BOTTOM = 4; TOP = 8
 
+    # задание переменных
+    x_1 = line[0][0]
+    y_1 = line[0][1]
+    x_2 = line[1][0]
+    y_2 = line[1][1]
 
+    
     x_a = x_1; y_a = y_1
     x_b = x_2; y_b = y_2
 
@@ -256,8 +253,6 @@ def cohen_sutherland_clipper(line : tuple[tuple[int, int], tuple[int, int]], x_m
 
     rectangle(x_min, x_max, y_min, y_max, image)
     bresenham_line(((x_a, y_a), (x_b, y_b)), image)
-
-    pass
 def liang_barsky_clipper(line : tuple[tuple[int, int], tuple[int, int]], x_min, x_max, y_min, y_max, image : Image):
 # функция отсекает некоторый отрезок прямоугольником на растровой плоскость по алгоритму Лианга - Барски
 #
@@ -292,7 +287,7 @@ def liang_barsky_clipper(line : tuple[tuple[int, int], tuple[int, int]], x_min, 
     # если p_1 == 0 или p_3 == 0, то прямая параллельна вертикальным или горизонтальным сторонам прямоугольника соответственно
     # в данном случае при q_i < 0 прямая проходит вне прямоугольника
     if ((p_1 == 0 & (q_1 < 0 | q_2 < 0)) | (p_3 == 0 & (q_3 < 0 | q_4 < 0))):
-        pass
+        return
     
     # при p_1 != 0 прямая не параллельна вертикальным сторонам, то есть будет их пересекать
     if (p_1 != 0):
@@ -322,7 +317,7 @@ def liang_barsky_clipper(line : tuple[tuple[int, int], tuple[int, int]], x_min, 
     t_n_2 = min(pos_arr)
 
     if(t_n_1 > t_n_2):
-        pass
+        return
 
     x_n_1 = round(x_1 + t_n_1 * p_2)
     y_n_1 = round(y_1 + t_n_1 * p_4)
@@ -332,8 +327,6 @@ def liang_barsky_clipper(line : tuple[tuple[int, int], tuple[int, int]], x_min, 
 
     rectangle(x_min, x_max, y_min, y_max, image)
     bresenham_line(((x_n_1, y_n_1), (x_n_2, y_n_2)), image)
-
-    pass
 def cyrus_beck_clipper(line : tuple[tuple[int, int], tuple[int, int]], xy, image):
 # функция отсекает некоторый отрезок выпуклым многоугольником на растровой плоскость по алгоритму Кируса - Бека
 #
@@ -342,12 +335,6 @@ def cyrus_beck_clipper(line : tuple[tuple[int, int], tuple[int, int]], xy, image
 #   xy - точки многоугольника в виде ((x_1, y_1), (x_2, y_2), ...)  
 #   image - растровая плоскость
 #
-    # задание переменных
-    x_1 = line[0][0]
-    y_1 = line[0][1]
-    x_2 = line[1][0]
-    y_2 = line[1][1]
-
     def dot(v_xy_1 : (int, int), v_xy_2 : (int, int)):
     # вспомогательная функция вычисления скалярного произведения двух векторов
     #
@@ -439,6 +426,12 @@ def cyrus_beck_clipper(line : tuple[tuple[int, int], tuple[int, int]], xy, image
 
         return xy_c
     
+    # задание переменных
+    x_1 = line[0][0]
+    y_1 = line[0][1]
+    x_2 = line[1][0]
+    y_2 = line[1][1]
+
     # изначальные параметры отрезка в параметрическом виде p = p_0 + t * dp
     t_1 = 0; t_2 = 1
     p_0_x = x_1
@@ -469,7 +462,7 @@ def cyrus_beck_clipper(line : tuple[tuple[int, int], tuple[int, int]], xy, image
         if (v_dot == 0):
             # если любая точка отрезка лежит правее ребра, то отрезок невиден
             if (is_point_right_to_vec((xy[i - 1][0], xy[i - 1][1]), (xy[i][0], xy[i][1]), (xy_1[0], xy_1[1]))):
-                pass
+                return
 
         # если v_dot < 0, то отрезок направлен с внутренней на внешнюю сторону ребра
         elif (v_dot < 0):
@@ -498,20 +491,13 @@ def cyrus_beck_clipper(line : tuple[tuple[int, int], tuple[int, int]], xy, image
     if (t_1 < t_2):
         polygon(xy, image)
         bresenham_line(((round(p_0_x + t_1 * dp_x), round(p_0_y + t_1 * dp_y)), (round(p_0_x + t_2 * dp_x), round(p_0_y + t_2 * dp_y))), image)
-    else:
-        pass
-    pass
 def sobel_filter(image_path, new_image_path):
 # функция обрабатывает изображение с помощью фильтра Собеля (выделяет его контуры)
 #
 # параметры:
 #   image_path - путь до изображения
-# возвращаемое значение:
 #   new_image_path - путь до нового изображения
 #
-    image = Image.open(image_path)
-    new_image = Image.new('RGB', (image.size[0], image.size[1]))
-
     def sobel_operator(xy : tuple[int, int], image : Image):
     # вспомогательная функция, вычисляющая значения оператора Собеля в точке
     #
@@ -540,9 +526,127 @@ def sobel_filter(image_path, new_image_path):
         # Возвращаем значение градиента в точке с координатами (x,y)
         return sqrt(G_x ** 2 + G_y ** 2)
 
+    image = Image.open(image_path)
+    new_image = Image.new('RGB', (image.size[0], image.size[1]))
+
     for x in range(1, image.size[0] - 1):
         for y in range(1, image.size[1] - 1):
             new_image.putpixel((x, y), round(sobel_operator((x, y), image)))
     new_image.save(new_image_path)
     new_image.show()
+def line_fill(image : Image, new_image_path, start_point : tuple[int, int], color):
+# функция заливки произвольной области: заливает произвольную одноцветную область начиная с точки start_point
+# (алгоритм определяет границы заливки как любой цвет, отличный от исходного цвета стартовой точки)
+#
+# параметры:
+#   image - растровая плоскость
+#   new_image_path - путь до нового изображения
+#   start_point в виде (x, y) - затравочная точка
+#   color - цвет заливки
+#
+    def fill(left_x, right_x, y, image, start_pixel_value, color):
+    # рекурсивная функция, заливающая линию
+    #
+    # параметры:
+    #
+    #   left_x, right_x - левая и правая границы заливки соответственно (включая их)
+    #   y - ордината прямой заливки
+    #   start_point_value - значение пикселей, которые надо залить
+    #   color - цвет заливки
+    #
+        bresenham_line(((left_x, y), (right_x, y)), image, color)
+        
+        # top
+        if (y + 1 < image.size[1]):
+            l_x = 0
+            for i in range(left_x, 0, -1):
+                if (image.getpixel((i, y + 1)) != start_pixel_value):
+                    l_x = i + 1
+                    break
+            if (l_x < left_x):
+                fill(l_x, left_x, y + 1, image, start_pixel_value, color)
+            
+            r_x = image.size[0] - 1
+            for i in range(right_x, image.size[0]):
+                if (image.getpixel((i, y + 1)) != start_pixel_value):
+                    r_x = i - 1
+                    break
+            if (r_x > right_x):
+                fill(right_x, r_x, y + 1, image, start_pixel_value, color)
+
+            for i in range(left_x, right_x + 1):
+                if (image.getpixel((i, y + 1)) == start_pixel_value):
+                    l_x = i
+                    while (image.getpixel((i, y + 1)) == start_pixel_value):
+                        r_x = i
+                        i += 1
+
+                        if (i > right_x):
+                            break
+
+                    fill(l_x, r_x, y + 1, image, start_pixel_value, color)
+        # bot
+        if (y > 0):
+            
+            l_x = 0
+            for i in range(left_x, 0, -1):
+                if (image.getpixel((i, y - 1)) != start_pixel_value):
+                    l_x = i + 1
+                    break
+            if (l_x < left_x):
+                fill(l_x, left_x, y - 1, image, start_pixel_value, color)
+            
+            r_x = image.size[0] - 1
+            for i in range(right_x, image.size[0]):
+                if (image.getpixel((i, y - 1)) != start_pixel_value):
+                    r_x = i - 1
+                    break
+            if (r_x > right_x):
+                fill(right_x, r_x, y - 1, image, start_pixel_value, color)
+
+            for i in range(left_x, right_x + 1):
+                if (image.getpixel((i, y - 1)) == start_pixel_value):
+                    l_x = i
+                    while (image.getpixel((i, y - 1)) == start_pixel_value):
+                        r_x = i
+                        i += 1
+
+                        if (i > right_x):
+                            break
+
+                    fill(l_x, r_x, y - 1, image, start_pixel_value, color)
+
+
+    new_image = image.copy()
+    start_pixel_value = image.getpixel(start_point)
+
+    # если цвет стартового пикселя уже color, то заливка не требуется
+    if (start_pixel_value == color):
+        return
+    
+    # нахожу левую и правую границы (границы включаются в заливку)
+    left_x = 0
+    for i in range(start_point[0], 0, -1):
+        if (image.getpixel((i, start_point[1])) != start_pixel_value):
+            left_x = i + 1
+            break
+
+    right_x = image.size[0] - 1
+    for i in range(start_point[0], image.size[0]):
+        if (image.getpixel((i, start_point[1])) != start_pixel_value):
+            right_x = i - 1
+            break
+    
+    fill(left_x, right_x, start_point[1], new_image, start_pixel_value, color)
+    new_image.save(new_image_path)
+    new_image.show()
+def bitmask_fill(image : Image, new_image_path, bitmask : Image, color):
+# функция заливки произвольной замкнутой фигуры, представленной битовой маской
+#
+# параметры:
+#   image_path - путь до изображения
+#   new_image_path - путь до нового изображения
+#   bitmask - битовая маска (представляет собой картинку с любой замкнутой фигурой, цвет фона - белый, границы фигуры - черный)
+#   color - цвет заливки
+#
     pass
