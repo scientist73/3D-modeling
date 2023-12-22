@@ -14,11 +14,28 @@
 #   * line_fill                     - алгоритм рекурсивной заливки отрезками с затравкой
 #   * bitmask_fill (not ready)      - алгоритм нерекурсивной заливки по битовой маске
 #
+#   * scale_2D                      - масштабирование точки относительно начала координат
+#   * rotate_2D                     - вращение точки относительно Ox
+#   * shift_2D                      - параллельный перенос точки на плоскости
+#
+#   * scale_3D                      - масштабирование точки в пространстве относительно начала координат
+#   * rotateX_3D                    - вращение точки относительно Ox
+#   * rotateY_3D                    - вращение точки относительно Oy
+#   * rotateZ_3D                    - вращение точки относительно Oz
+#   * shift_3D                      - параллельный перенос точки в пространстве
+#
+#   * roggers_clipper               - отсечение невидимых граней по алгоритму Роджерса
+#   * zbuffer_clipper               - отсечение невидимых граней с помощью Z буффера
+#   * zbuffer_clipper_with_light    - освещение
+#
 
 from PIL import Image
 import array
 from math import sqrt
 from statistics import mean
+import numpy as np
+from random import randint
+
 
 def bresenham_line(line : tuple[tuple[int, int], tuple[int, int]], image : Image, color = 255):
 # функция рисует на растровой плоскости отрезок по 2м точкам по целочисленному алгоритму Брезенхейма
@@ -650,3 +667,404 @@ def bitmask_fill(image : Image, new_image_path, bitmask : Image, color):
 #   color - цвет заливки
 #
     pass
+
+def scale_2D(xy : tuple[int, int], a : tuple[float, float]):
+# функция масштабирования точки относительно начала координат
+#
+# параметры:
+#   xy в виде (x, y) - точка
+#   a в виде (a_x, a_y) - коэффициенты масштабирования по Ox и Oy
+#
+# возвращаемое значение - координаты новой точки в виде (x, y)
+#
+
+    # scale matrix
+    Scale = [
+        [a[0],   0,       0],
+        [0,      a[1],    0],
+        [0,      0,       1],
+    ]
+
+    # dot matrix
+    Dot = [
+        [   xy[0]  ],
+        [   xy[1]  ],
+        [   1      ],
+    ]
+
+    res = np.dot(Scale,Dot)
+
+    return (res[0][0](int), res[0][1](int))
+def rotate_2D(xy : tuple[int, int], phi : float):
+# функция вращения точки относительно Ox
+#
+# параметры:
+#   xy в виде (x, y) - точка
+#   a в виде phi - угол между вектором (x, y) и Ox
+#
+# возвращаемое значение - координаты новой точки в виде (x, y)
+#
+    # rotation matrix
+    Rotate = [
+        [np.cos(phi),       np.sin(phi),        0],
+        [-np.sin(phi),      np.cos(phi),        0],
+        [0,                 0,                  1],
+    ]
+
+    # dot matrix
+    Dot = [
+        [   xy[0]  ],
+        [   xy[1]  ],
+        [   1      ],
+    ]
+
+    res = np.dot(Rotate,Dot)
+
+    return (res[0][0](int), res[0][1](int))
+def shift_2D(xy: tuple[int, int], t : tuple[int, int]):
+# функция параллельного переноса точки
+#
+# параметры:
+#   xy в виде (x, y) - точка
+#   t в виде (t_x, t_y) - единицы параллельного переноса
+#
+# возвращаемое значение - координаты новой точки в виде (x, y)
+# 
+
+    # shift matrix
+    Shift = [
+        [1,         0,        0],
+        [0,         1,        0],
+        [t[0],      t[1],     1],
+    ]
+
+    # dot matrix
+    Dot = [
+        [   xy[0]  ],
+        [   xy[1]  ],
+        [   1      ],
+    ]
+
+    res = np.dot(Shift,Dot)
+
+    return (res[0][0](int), res[0][1](int))
+
+def scale_3D(xyz : tuple[int, int, int], a : tuple[float, float, float]):
+# функция масштабирования точки в пространстве относительно начала координат
+#
+# параметры:
+#   xyz в виде (x, y, z) - точка
+#   a в виде (a_x, a_y, a_z) - коэффициенты масштабирования по Ox, Oy и Oz
+#
+# возвращаемое значение - координаты новой точки в виде (x, y, z)
+#
+
+    # scale matrix
+    Scale = [
+        [a[0],   0,       0,        0],
+        [0,      a[1],    0,        0],
+        [0,      0,       a[2],     0],
+        [0,      0,       0,        1]
+    ]
+
+    # dot matrix
+    Dot = [
+        [   xyz[0]  ],
+        [   xyz[1]  ],
+        [   xyz[2]  ],
+        [   1      ]
+    ]
+
+    res = np.dot(Scale,Dot)
+
+    return (res[0][0](int), res[0][1](int), res[0][2](int))
+def rotateX_3D(xyz : tuple[int, int, int], phi_x : float):
+# функция вращения точки относительно Ox
+#
+# параметры:
+#   xyz в виде (x, y, z) - точка
+#   a в виде phi_x - угол между вектором (x, y, z) и Ox
+#
+# возвращаемое значение - координаты новой точки в виде (x, y, z)
+# 
+    # rotation matrix
+    RotateX = [
+        [1,     0,                  0,                  0],
+        [0,     np.cos(phi_x),      -np.sin(phi_x),     0],
+        [0,     np.sin(phi_x),      np.cos(phi_x),      0],
+        [0,     0,                  0,                  1],
+    ]
+
+    # dot matrix
+    Dot = [
+        [   xyz[0]  ],
+        [   xyz[1]  ],
+        [   xyz[2]  ],
+        [   xyz[3]  ],
+    ]
+
+    res = np.dot(RotateX,Dot)
+
+    return (res[0][0](int), res[0][1](int), res[0][2](int))
+def rotateY_3D(xyz : tuple[int, int, int], phi_y : float):
+# функция вращения точки относительно Oy
+#
+# параметры:
+#   xyz в виде (x, y, z) - точка
+#   a в виде phi_y - угол между вектором (x, y, z) и Oy
+#
+# возвращаемое значение - координаты новой точки в виде (x, y, z)
+# 
+    # rotation matrix
+    RotateY = [
+        [np.cos(-phi_y),    0,      -np.sin(-phi_y),    0],
+        [0,                 1,      0,                  0],
+        [np.sin(-phi_y),    0,      np.cos(-phi_y),     0],
+        [0,                 0,      0,                  1],
+    ]
+
+    # dot matrix
+    Dot = [
+        [   xyz[0]  ],
+        [   xyz[1]  ],
+        [   xyz[2]  ],
+        [   xyz[3]  ],
+    ]
+
+    res = np.dot(RotateY,Dot)
+
+    return (res[0][0](int), res[0][1](int), res[0][2](int))
+def rotateZ_3D(xyz : tuple[int, int, int], phi_z : float):
+# функция вращения точки относительно Oz
+#
+# параметры:
+#   xyz в виде (x, y, z) - точка
+#   a в виде phi_z - угол между вектором (x, y, z) и Oz
+#
+# возвращаемое значение - координаты новой точки в виде (x, y, z)
+# 
+    # rotation matrix
+    RotateZ = [
+        [np.cos(phi_z),       np.sin(phi_z),        0,          0],
+        [-np.sin(phi_z),      np.cos(phi_z),        0,          0],
+        [0,                   0,                      1,          0],
+        [0,                   0,                      0,          1],
+    ]
+
+    # dot matrix
+    Dot = [
+        [   xyz[0]  ],
+        [   xyz[1]  ],
+        [   xyz[2]  ],
+        [   xyz[3]  ],
+    ]
+
+    res = np.dot(RotateZ,Dot)
+
+    return (res[0][0](int), res[0][1](int), res[0][2](int))
+def shift_3D(xyz : tuple[int, int, int], t : tuple[int, int, int]):
+# функция параллельного переноса точки
+#
+# параметры:
+#   xyz в виде (x, y, z) - точка
+#   t в виде (t_x, t_y, t_z) - единицы параллельного переноса
+#
+# возвращаемое значение - координаты новой точки в виде (x, y, z)
+# 
+
+    # shift matrix
+    Shift = [
+        [1,     0,      0,      t[0]],
+        [0,     1,      0,      t[1]],
+        [0,     0,      1,      t[2]],
+        [0,     0,      0,      1   ],
+    ]
+
+    # dot matrix
+    Dot = [
+        [   xyz[0]  ],
+        [   xyz[1]  ],
+        [   xyz[2]  ]
+        [   1       ],
+    ]
+
+    res = np.dot(Shift,Dot)
+
+    return (res[0][0](int), res[0][1](int), res[0][2](int))
+
+def roggers_clipper(obj_file, image : Image):
+# функция отсечения невидимых граней по алгоритму Роджерса
+#
+# параметры:
+#
+# возвращаемое значение
+#
+    def is_plane_visible(pl : list):
+        global dots
+        global center
+
+        a = np.array([dots[pl[0]][0] - center[0], dots[pl[0]][1] - center[1], dots[pl[0]][2] - center[2]])
+        b = np.array([0, 0, -1])
+
+        if (a.dot(b) <= 0):
+            return False
+        else:
+            return True
+
+    dots = []
+    center = [0,0,0]
+    plane = []
+
+    with open(obj_file) as file:
+        info = file.read().split('\n')
+
+    for line in info:
+        if (line.find("v") == 0):
+            _, *line = line.split()
+            dots.append( list(float(dot) for dot in line) )
+        elif (line.find("f") == 0):
+            _, *line = line.split()
+            plane.append( list(int(fig) for fig in line) )
+
+
+    for i in range(len(dots)):
+        center[0] += dots[i][0]
+        center[1] += dots[i][1]
+        center[2] += dots[i][2]
+    center[0] /= len(dots)
+    center[1] /= len(dots)
+    center[2] /= len(dots)
+
+
+    for i in range(len(plane)):
+        pl = plane[i]
+        if (is_plane_visible(pl)):
+            for i in range(len(pl) + 1):
+                bresenham_line(((int(dots[pl[i]][0]), int(dots[pl[i]][1])), (int(dots[pl[i+1]][0]), int(dots[pl[i+1]][1]))), image)
+def zbuffer_clipper(obj_file, image : Image):
+# функция отсечения невидимых граней с помощью Z буффера
+#
+# параметры:
+#
+# возвращаемое значение
+#
+    class point:
+        def __init__(self, xyz : tuple[int,int,int]):
+            self.x = xyz[0]
+            self.y = xyz[1]
+            self.z = xyz[2]
+
+    class plane:
+        def __init__(self, p: tuple[point,point,point], color):
+            
+            self.p = p
+            self.color = color
+
+            XYZ = np.array(
+                [   p[0].x,    p[1].x,     p[2].x  ],
+                [   p[0].y,    p[1].y,     p[2].y  ],
+                [   p[0].z,    p[1].z,     p[2].z  ],
+                [   1,         1,          1       ],
+            )
+            (self.A, self.B, self.C, self.D) = np.dot(np.array([0,0,0]), np.linalg.matrix_power(XYZ, -1))
+
+        def in_plane_xy(self, xy : tuple[int,int]) -> bool: 
+            return (min(xy[0].x,xy[1].x,xy[2].x) <= xy.x <= max(xy[0].x,xy[1].x,xy[2].x)
+                    & 
+                    (min(xy[0].y,xy[1].y,xy[2].y) <= xy.y <= max(xy[0].y,xy[1].y,xy[2].y)))
+        def get_z(self, xy : tuple[int, int]) -> int:
+            return -(self.D + self.A * xy[0] + self.B * xy[1]) / self.C
+        
+
+    dots = list(point)
+    planes = list(plane)
+
+    with open(obj_file) as file:
+        info = file.read().split('\n')
+
+    for line in info:
+        if (line.find("v") == 0):
+            _, *line = line.split()
+            if (len(line) == 3):
+                dots.append(int(line[0]), int(line[1]), int(line[2]))
+
+        elif (line.find("f") == 0):
+            _, *line = line.split()
+            if (len(line) == 3):
+                planes.append((point(dots[line[0]]), point(dots[line[1]]), point(line[2])), randint(0, 255))
+
+    
+    for i in range(image.size[0]):
+        for j in range(image.size[1]):
+          
+          z_max = -float('inf')
+          for p in planes:
+              if(p.in_plane_xy((i, j))):
+                  z = p.get_z((i,j))
+                  if (z_max < z):
+                      z_max = z
+                      image.putpixel((i,j), p.color)  
+def zbuffer_clipper_with_light(obj_file, image : Image):
+# функция отсечения невидимых граней с помощью Z буффера
+#
+# параметры:
+#
+# возвращаемое значение
+#
+    class point:
+        def __init__(self, xyz : tuple[int,int,int]):
+            self.x = xyz[0]
+            self.y = xyz[1]
+            self.z = xyz[2]
+
+    class plane:
+        def __init__(self, p: tuple[point,point,point], color):
+            
+            self.p = p
+            self.color = color
+
+            XYZ = np.array(
+                [   p[0].x,    p[1].x,     p[2].x  ],
+                [   p[0].y,    p[1].y,     p[2].y  ],
+                [   p[0].z,    p[1].z,     p[2].z  ],
+                [   1,         1,          1       ],
+            )
+            (self.A, self.B, self.C, self.D) = np.dot(np.array([0,0,0]), np.linalg.matrix_power(XYZ, -1))
+
+        def in_plane_xy(self, xy : tuple[int,int]) -> bool: 
+            return (min(xy[0].x,xy[1].x,xy[2].x) <= xy.x <= max(xy[0].x,xy[1].x,xy[2].x)
+                    & 
+                    (min(xy[0].y,xy[1].y,xy[2].y) <= xy.y <= max(xy[0].y,xy[1].y,xy[2].y)))
+        def get_z(self, xy : tuple[int, int]) -> int:
+            return -(self.D + self.A * xy[0] + self.B * xy[1]) / self.C
+        
+
+    dots = list(point)
+    planes = list(plane)
+
+    with open(obj_file) as file:
+        info = file.read().split('\n')
+
+    for line in info:
+        if (line.find("v") == 0):
+            _, *line = line.split()
+            if (len(line) == 3):
+                dots.append(int(line[0]), int(line[1]), int(line[2]))
+
+        elif (line.find("f") == 0):
+            _, *line = line.split()
+            if (len(line) == 3):
+                planes.append((point(dots[line[0]]), point(dots[line[1]]), point(line[2])), randint(0, 255))
+
+    
+    for i in range(image.size[0]):
+        for j in range(image.size[1]):
+          
+          z_max = -float('inf')
+          for p in planes:
+              if(p.in_plane_xy((i, j))):
+                  z = p.get_z((i,j))
+                  if (z_max < z):
+                      z_max = z
+                      image.putpixel((i,j), p.color * pow(2, -(abs(z - 100) / 50)))
+
