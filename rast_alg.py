@@ -777,7 +777,8 @@ def scale_3D(xyz : tuple[int, int, int], a : tuple[float, float, float]):
 
     res = np.dot(Scale,Dot)
 
-    return (res[0][0](int), res[0][1](int), res[0][2](int))
+    return (int(res[0][0]),int(res[1][0]),int(res[2][0]))
+
 def rotateX_3D(xyz : tuple[int, int, int], phi_x : float):
 # функция вращения точки относительно Ox
 #
@@ -787,6 +788,7 @@ def rotateX_3D(xyz : tuple[int, int, int], phi_x : float):
 #
 # возвращаемое значение - координаты новой точки в виде (x, y, z)
 # 
+    phi_x = phi_x * np.pi / 180 
     # rotation matrix
     RotateX = [
         [1,     0,                  0,                  0],
@@ -800,12 +802,12 @@ def rotateX_3D(xyz : tuple[int, int, int], phi_x : float):
         [   xyz[0]  ],
         [   xyz[1]  ],
         [   xyz[2]  ],
-        [   xyz[3]  ],
+        [   1       ],
     ]
 
     res = np.dot(RotateX,Dot)
 
-    return (res[0][0](int), res[0][1](int), res[0][2](int))
+    return (int(res[0][0]),int(res[1][0]),int(res[2][0]))
 def rotateY_3D(xyz : tuple[int, int, int], phi_y : float):
 # функция вращения точки относительно Oy
 #
@@ -815,6 +817,7 @@ def rotateY_3D(xyz : tuple[int, int, int], phi_y : float):
 #
 # возвращаемое значение - координаты новой точки в виде (x, y, z)
 # 
+    phi_y = phi_y * np.pi / 180 
     # rotation matrix
     RotateY = [
         [np.cos(-phi_y),    0,      -np.sin(-phi_y),    0],
@@ -828,12 +831,12 @@ def rotateY_3D(xyz : tuple[int, int, int], phi_y : float):
         [   xyz[0]  ],
         [   xyz[1]  ],
         [   xyz[2]  ],
-        [   xyz[3]  ],
+        [   1       ],
     ]
 
     res = np.dot(RotateY,Dot)
 
-    return (res[0][0](int), res[0][1](int), res[0][2](int))
+    return (int(res[0][0]),int(res[1][0]),int(res[2][0]))
 def rotateZ_3D(xyz : tuple[int, int, int], phi_z : float):
 # функция вращения точки относительно Oz
 #
@@ -843,6 +846,7 @@ def rotateZ_3D(xyz : tuple[int, int, int], phi_z : float):
 #
 # возвращаемое значение - координаты новой точки в виде (x, y, z)
 # 
+    phi_z = phi_z * np.pi / 180 
     # rotation matrix
     RotateZ = [
         [np.cos(phi_z),       np.sin(phi_z),        0,          0],
@@ -856,12 +860,12 @@ def rotateZ_3D(xyz : tuple[int, int, int], phi_z : float):
         [   xyz[0]  ],
         [   xyz[1]  ],
         [   xyz[2]  ],
-        [   xyz[3]  ],
+        [   1       ],
     ]
 
     res = np.dot(RotateZ,Dot)
 
-    return (res[0][0](int), res[0][1](int), res[0][2](int))
+    return (int(res[0][0]),int(res[1][0]),int(res[2][0]))
 def shift_3D(xyz : tuple[int, int, int], t : tuple[int, int, int]):
 # функция параллельного переноса точки
 #
@@ -884,13 +888,15 @@ def shift_3D(xyz : tuple[int, int, int], t : tuple[int, int, int]):
     Dot = [
         [   xyz[0]  ],
         [   xyz[1]  ],
-        [   xyz[2]  ]
+        [   xyz[2]  ],
         [   1       ],
     ]
 
     res = np.dot(Shift,Dot)
 
-    return (res[0][0](int), res[0][1](int), res[0][2](int))
+    
+
+    return (int(res[0][0]),int(res[1][0]),int(res[2][0]))
 
 def roggers_clipper(obj_file, image : Image):
 # функция отсечения невидимых граней по алгоритму Роджерса
@@ -953,6 +959,7 @@ def zbuffer_clipper(obj_file, image : Image):
             self.x = xyz[0]
             self.y = xyz[1]
             self.z = xyz[2]
+        
 
     class plane:
         def __init__(self, p: tuple[point,point,point], color):
@@ -960,24 +967,69 @@ def zbuffer_clipper(obj_file, image : Image):
             self.p = p
             self.color = color
 
-            XYZ = np.array(
-                [   p[0].x,    p[1].x,     p[2].x  ],
-                [   p[0].y,    p[1].y,     p[2].y  ],
-                [   p[0].z,    p[1].z,     p[2].z  ],
-                [   1,         1,          1       ],
-            )
-            (self.A, self.B, self.C, self.D) = np.dot(np.array([0,0,0]), np.linalg.matrix_power(XYZ, -1))
+            Arr = np.array((
+                [   -p[0].x,    -p[0].y,     -p[0].z  ],
+                [   p[1].x - p[0].x,    p[1].y - p[0].y,     p[1].z - p[0].z  ],
+                [   p[2].x - p[0].x,    p[2].y - p[0].y,     p[2].z - p[0].z  ],
+            ))
+
+
+            self.A = np.linalg.det(np.array((
+                [Arr[1][1], Arr[1][2]],
+                [Arr[2][1], Arr[2][2]],
+                )))
+            self.B = np.linalg.det(np.array((
+                [Arr[1][0], Arr[1][2]],
+                [Arr[2][0], Arr[2][2]],
+                )))
+            self.C = np.linalg.det(np.array((
+                [Arr[1][0], Arr[1][1]],
+                [Arr[2][0], Arr[2][1]],
+                )))
+            self.D = np.linalg.det(Arr)
 
         def in_plane_xy(self, xy : tuple[int,int]) -> bool: 
-            return (min(xy[0].x,xy[1].x,xy[2].x) <= xy.x <= max(xy[0].x,xy[1].x,xy[2].x)
-                    & 
-                    (min(xy[0].y,xy[1].y,xy[2].y) <= xy.y <= max(xy[0].y,xy[1].y,xy[2].y)))
+        
+            # Проверка будет производиться для обоих обходов
+            # Описание векторов фигуры
+            abV = tuple([(self.p[1].x - self.p[0].x), (self.p[1].y - self.p[0].y)])
+            bcV = tuple([(self.p[2].x - self.p[1].x), (self.p[2].y - self.p[1].y)])
+            caV = tuple([(self.p[0].x - self.p[2].x), (self.p[0].y - self.p[2].y)])
+
+            # Описание нормалей векторов фигуры
+            Nab = tuple([abV[1], -abV[0]])
+            Nbc = tuple([bcV[1], -bcV[0]])
+            Nca = tuple([caV[1], -caV[0]])
+
+            # Описание векторов от точек фигуры до исходной точки
+            atV = tuple([xy[0] - self.p[0].x, xy[1] - self.p[0].y])
+            btV = tuple([xy[0] - self.p[1].x, xy[1] - self.p[1].y])
+            ctV = tuple([xy[0] - self.p[2].x, xy[1] - self.p[2].y])
+
+            # Проверка на принадлежность исходной точки данной фигуре
+            if ((
+                (Nab[0]*atV[0] + Nab[1]*atV[1] >= 0) and 
+                (Nbc[0]*btV[0] + Nbc[1]*btV[1] >= 0) and 
+                (Nca[0]*ctV[0] + Nca[1]*ctV[1] >= 0)
+                )
+
+                or
+
+                (
+                (Nab[0]*atV[0] + Nab[1]*atV[1] < 0) and 
+                (Nbc[0]*btV[0] + Nbc[1]*btV[1] < 0) and 
+                (Nca[0]*ctV[0] + Nca[1]*ctV[1] < 0)
+                )):
+                
+                return True
+
+            return False
         def get_z(self, xy : tuple[int, int]) -> int:
             return -(self.D + self.A * xy[0] + self.B * xy[1]) / self.C
         
 
-    dots = list(point)
-    planes = list(plane)
+    dots = list()
+    planes = list()
 
     with open(obj_file) as file:
         info = file.read().split('\n')
@@ -986,22 +1038,37 @@ def zbuffer_clipper(obj_file, image : Image):
         if (line.find("v") == 0):
             _, *line = line.split()
             if (len(line) == 3):
-                dots.append(int(line[0]), int(line[1]), int(line[2]))
+                x = (int(line[0]))
+                y = (int(line[1]))
+                z = (int(line[2]))
+
+                (x,y,z) = scale_3D((x,y,z),(300, 400, 400))
+                (x,y,z) = shift_3D((x,y,z),(500,500,0))
+
+                (x,y,z) = rotateY_3D((x,y,z), 20)
+                #(x,y,z) = rotateZ_3D((x,y,z), 15)
+                (x,y,z) = rotateX_3D((x,y,z), 34)
+
+                dots.append(point((x, y, z)))
 
         elif (line.find("f") == 0):
             _, *line = line.split()
             if (len(line) == 3):
-                planes.append((point(dots[line[0]]), point(dots[line[1]]), point(line[2])), randint(0, 255))
+                p0 = dots[int(line[0]) - 1]
+                p1 = dots[int(line[1]) - 1]
+                p2 = dots[int(line[2]) - 1]
+                planes.append(plane((p0, p1, p2), randint(100, 255)))
 
     
     for i in range(image.size[0]):
         for j in range(image.size[1]):
           
-          z_max = -float('inf')
+          z_max = planes[0].get_z((i,j))
+
           for p in planes:
               if(p.in_plane_xy((i, j))):
                   z = p.get_z((i,j))
-                  if (z_max < z):
+                  if (z > z_max):
                       z_max = z
                       image.putpixel((i,j), p.color)  
 def zbuffer_clipper_with_light(obj_file, image : Image):
